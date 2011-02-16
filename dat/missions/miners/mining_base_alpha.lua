@@ -46,11 +46,16 @@ Before the technicians run back into the market to buy new stuff for their stati
    
    launch = {}
    launch[1] = "Preparing to launch station modules..."
-   launch[2] = "Getting into position..."
-   launch[3] = "Launch in 5..."
+   launch[2] = "Launch in 5..."
    launch[4] = "Modules launched successfully!"
    
+   autopilot = {}
+   autopilot[1] = "Reached target system: Initiate autopilot..."
+   autopilot[2] = "Launch site reached: starting launch sequence..."
+   autopilot[3] = "Launch sequence complete: Deactivating autopilot..."
+   
    trgtSystem = "Sirou" -- System where the new mining base will be build. If you change this, change also in unidiff.xml!!
+   stationCoors = vec2.new( -100, 100) -- Should be somewhat similar to coordinates in assets.xml
 end
 
 
@@ -112,7 +117,7 @@ function accept ()
    
    -- Set up hooks
    hook.land("land")
-   hook.enter("jump")
+   hook.enter("enter")
 end
 
 function land ()
@@ -131,24 +136,34 @@ function land ()
    end
 end
 
-function jump ()
+function enter()
    sys = system.cur()
    -- Launch satellite
    if misn_stage == 0 and sys == satellite_sys then
-      hook.timer( 3000, "beginLaunch" )	-- 3sec after entering the system, start launching
+      plt = player.pilot()
+      hook.timer( 3000, "initAutopilot" )  -- 3sec after entering the system, start using the autopilot
+      --Instead of begin launch, initiate autopilot
    end
 end
 
++function abort()
+
+end
 
 --[[
    Launch process
 --]]
+function initAutopilot()
+   player.msg( autopilot[1] )             -- starting autopilot
+   plt:control()                                 -- Taking control
+   plt:goto( stationCoors )                 -- Head into direction
+   hook.pilot(plt,'idle',beginLaunch)   -- When destination is reached, status should be idle
+end
 function beginLaunch ()
-	-- TODO: fixing some more specific  location to drop the station modules -Anatolis
-	player.msg( launch[2] ) -- start position
-	player.msg( launch[1] ) -- Starting countdown
-	misn.osdDestroy()		-- Distroy the current mission objective (jetting cargo)
-	hook.timer( 3000, "beginCountdown" )
+  
+        player.msg( autopilot[2] )        -- msg destination reached 
+       player.msg( launch[1] )             -- Starting launch sequence
+	hook.timer( 2000, "beginCountdown" )
 end
 function beginCountdown ()
    countdown = 5
@@ -174,7 +189,9 @@ function launchModules ()
 	misn.cargoJet(cargo4)
 	misn.cargoJet(cargo5)
 	
-	hook.timer( 2000, "launchSucces" ) -- Wait for 2sec to display succes message
+        plt:control(false)       -- return ships control to player again
+        player.msg( autopilot[3] )
+  hook.timer( 3000, "launchSucces" ) -- Wait for 3sec to display succes message
 end
 function launchSucces()
 	-- Message upon good launch. 
